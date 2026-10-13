@@ -30,9 +30,9 @@ Built for the [DEV Hacktoberfest Open-Source AI Challenge](https://dev.to) — W
 - **Local-first, and honest about what isn't.** TabPFN and Gemma both run locally on this machine (via the `tabpfn` package and Ollama) — no data leaves it during prediction or explanation. The footer badge in the app always states exactly what ran where, read from the live config, not hardcoded.
 - **Every claim has a number behind it.** See [`results/eval.md`](results/eval.md) for the full accuracy table, baselines, and honest discussion of where this approach wins and loses.
 
-## Screenshots
+## Screenshot
 
-> _Add a screenshot or GIF of the app here before sharing the repo — e.g. `static/screenshot.png`._
+![SalesWhy chart: actual vs expected daily sales, with shaded and labeled drop/spike windows](static/screenshot.png)
 
 ## Evaluation
 
