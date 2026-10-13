@@ -1,0 +1,7 @@
+{
+  "abstain_rate": 0.233,
+  "overall_accuracy": 0.533,
+  "mean_latency_s": 5.47,
+  "total_prompt_tokens": 20866,
+  "total_completion_tokens": 967
+}

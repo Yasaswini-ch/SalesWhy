@@ -1,0 +1,14 @@
+pandas==2.3.3
+numpy==2.5.3
+scikit-learn==1.8.0
+tabpfn==9.1.0
+xgboost==3.2.0
+tabulate==0.10.0
+kaggle
+fastapi==0.142.2
+uvicorn==0.30.6
+python-multipart
+pillow==10.4.0
+python-dotenv
+google-genai
+openai

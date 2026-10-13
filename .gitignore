@@ -1,0 +1,20 @@
+data/*
+!data/.gitkeep
+!data/sample_shop.csv
+.env
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.zip
+.claude/
+
+# Bulky per-seller intermediates, regenerable from prep.py/features.py/
+# predict.py/inject.py/detect.py and derived from the gitignored Olist data --
+# keep the evaluation summary artifacts (eval.md, eval.csv, baseline_llm*)
+# tracked since those are the evidence behind the write-up's numbers.
+results/daily/
+results/features/
+results/injected/
+results/injected_predictions/
+results/predictions/
+results/detections/

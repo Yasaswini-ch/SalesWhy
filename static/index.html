@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SalesWhy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #F6F1E7;
+    --card: #FBF8F1;
+    --ink: #1F1B16;
+    --muted: #6B6358;
+    --hairline: #D9D0BE;
+    --drop: #B3382C;
+    --positive: #3E6B4A;
+    --highlight: #E0A526;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 600; margin: 0; }
+  header.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  header.page-header h1 { font-size: 2.2rem; }
+  header.page-header p { color: var(--muted); margin: 6px 0 0; }
+  .stamp {
+    flex-shrink: 0;
+    width: 52px; height: 52px;
+    border: 2px dashed var(--drop);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--drop);
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    transform: rotate(-8deg);
+    opacity: 0.85;
+  }
+
+  .card {
+    position: relative;
+    background-color: var(--card);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    border: 1px solid var(--hairline);
+    border-top: 3px solid var(--accent, var(--ink));
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .upload-box {
+    border: 2px dashed var(--hairline);
+    border-radius: 6px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--card);
+    transition: border-color 0.15s;
+  }
+  .upload-box:hover, .upload-box.drag { border-color: var(--highlight); }
+  .upload-box input { display: none; }
+  .upload-box .hint { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
+
+  .btn {
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 4px;
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+  .btn.secondary { background: transparent; color: var(--ink); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+
+  .mapper-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .mapper-row label { width: 90px; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
+  .mapper-row select {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    padding: 6px 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .loading { text-align: center; color: var(--muted); padding: 32px 0; font-style: italic; }
+
+  .finding-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 12px 10px 12px 14px;
+    margin: 0 -10px;
+    border-bottom: 1px solid var(--hairline);
+    border-left: 4px solid var(--hairline);
+    cursor: pointer;
+    flex-wrap: wrap;
+    transition: background 0.1s, border-left-color 0.1s;
+  }
+  .finding-row:hover { background: rgba(31, 27, 22, 0.03); }
+  .finding-row:last-child { border-bottom: none; }
+  .finding-row.selected { background: rgba(224, 165, 38, 0.1); }
+  .finding-row.drop { border-left-color: var(--drop); }
+  .finding-row.positive { border-left-color: var(--positive); }
+  .finding-row.unknown { border-left-color: var(--hairline); }
+  .finding-index { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 0.8rem; width: 20px; flex-shrink: 0; }
+  .finding-date { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 0.9rem; white-space: nowrap; }
+  .finding-desc { flex: 1; min-width: 200px; }
+  .finding-pct { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  .finding-pct.drop { color: var(--drop); }
+  .finding-pct.positive { color: var(--positive); }
+  .finding-pct.unknown { color: var(--muted); }
+
+  .explain-card {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--highlight);
+    border-radius: 6px;
+    padding: 24px;
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    line-height: 1.6;
+  }
+  .explain-card[lang="te"] { font-family: 'Noto Sans Telugu', 'Fraunces', serif; }
+  .lang-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+  .lang-toggle button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .lang-toggle button.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .explain-meta { margin-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted); }
+
+  .drilldown-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hairline); flex-wrap: wrap; }
+  .drilldown-row:last-child { border-bottom: none; }
+  .drilldown-name { font-weight: 600; }
+  .drilldown-detail { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--muted); }
+  .drilldown-lost { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--drop); white-space: nowrap; }
+  .drilldown-lost.gained { color: var(--positive); }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 32px; font-family: 'IBM Plex Mono', monospace; }
+  .error-box { color: var(--drop); background: rgba(179,56,44,0.08); border: 1px solid var(--drop); border-radius: 6px; padding: 14px; margin-bottom: 16px; }
+  .hidden { display: none !important; }
+  canvas#chart { max-height: 320px; }
+  .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .chart-header h3 { font-size: 1.15rem; }
+  .chart-legend { display: flex; gap: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted); }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { display: inline-block; width: 16px; height: 0; border-radius: 1px; }
+  .swatch.actual { border-top: 3px solid var(--ink); }
+  .swatch.expected { border-top: 2px dashed var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-header">
+    <div class="stamp">S</div>
+    <div>
+      <h1>SalesWhy</h1>
+      <p>Upload your orders and find out why sales dipped -- in plain words.</p>
+    </div>
+  </header>
+
+  <div id="error" class="error-box hidden"></div>
+
+  <section id="upload-section" class="card" style="--accent: var(--highlight);">
+    <div class="upload-box" id="dropzone">
+      <div>Drop your orders CSV here, or click to choose a file</div>
+      <div class="hint">Shopify, Etsy, or similar export</div>
+      <input type="file" id="file-input" accept=".csv">
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="sample-btn">Try sample shop</button>
+    </div>
+  </section>
+
+  <section id="mapper-section" class="card hidden" style="--accent: var(--ink);">
+    <h3 style="margin-bottom:14px;">Check these columns</h3>
+    <div id="mapper-rows"></div>
+    <div class="btn-row">
+      <button class="btn" id="analyze-btn">Analyze</button>
+    </div>
+  </section>
+
+  <div id="loading" class="loading hidden">Reading your orders... finding the dips...</div>
+
+  <section id="results-section" class="hidden">
+    <div class="card" style="--accent: var(--ink);">
+      <div class="chart-header">
+        <h3>Daily sales</h3>
+        <div class="chart-legend">
+          <span><i class="swatch actual"></i>Actual</span>
+          <span><i class="swatch expected"></i>Expected</span>
+        </div>
+      </div>
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div class="card" id="findings-card" style="--accent: var(--drop);">
+      <h3 style="margin-bottom:10px;">Findings</h3>
+      <div id="findings-rows"></div>
+    </div>
+
+    <div class="card hidden" id="drilldown-card" style="--accent: var(--highlight);">
+      <h3 style="margin-bottom:10px;">Top products in this window</h3>
+      <div id="drilldown-rows"></div>
+    </div>
+
+    <div class="card" id="explain-section" style="--accent: var(--highlight);">
+      <div class="lang-toggle">
+        <button id="lang-en" class="active">English</button>
+        <button id="lang-te">తెలుగు</button>
+      </div>
+      <div class="explain-card" id="explain-text" lang="en">Select a finding above to see the explanation.</div>
+      <div class="explain-meta" id="explain-meta"></div>
+      <div id="whatif-box" class="hidden" style="margin-top:16px;">
+        <button class="btn secondary" id="whatif-btn">What if? (estimate)</button>
+        <p id="whatif-message" style="margin-top:10px; color:var(--muted); font-size:0.95rem;"></p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn secondary" id="slip-btn">Save ledger slip</button>
+    </div>
+  </section>
+
+  <footer id="footer-line"></footer>
+</div>
+
+<script>
+const state = { result: null, selectedFindingIdx: null, language: 'en', shopName: 'Your Shop', mapping: null, columns: null, file: null };
+
+const $ = (id) => document.getElementById(id);
+
+function showError(msg) {
+  const el = $('error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function clearError() { $('error').classList.add('hidden'); }
+
+async function loadMappingForFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const resp = await fetch('/api/mapping', { method: 'POST', body: fd });
+  if (!resp.ok) { showError((await resp.json()).detail || 'Could not read this file.'); return; }
+  const data = await resp.json();
+  state.columns = data.columns;
+  state.mapping = data.mapping;
+  renderMapper();
+}
+
+function renderMapper() {
+  const fields = [['date','Date'], ['amount','Amount'], ['quantity','Quantity'], ['product','Product']];
+  const rows = fields.map(([key, label]) => {
+    const options = ['<option value="">(none)</option>'].concat(
+      state.columns.map(c => `<option value="${c}" ${state.mapping[key] === c ? 'selected' : ''}>${c}</option>`)
+    ).join('');
+    return `<div class="mapper-row"><label>${label}</label><select data-field="${key}">${options}</select></div>`;
+  }).join('');
+  $('mapper-rows').innerHTML = rows;
+  $('mapper-section').classList.remove('hidden');
+}
+
+function currentMappingFromUI() {
+  const selects = $('mapper-rows').querySelectorAll('select');
+  const mapping = {};
+  selects.forEach(s => { mapping[s.dataset.field] = s.value || null; });
+  return mapping;
+}
+
+$('dropzone').addEventListener('click', () => $('file-input').click());
+$('dropzone').addEventListener('dragover', (e) => { e.preventDefault(); $('dropzone').classList.add('drag'); });
+$('dropzone').addEventListener('dragleave', () => $('dropzone').classList.remove('drag'));
+$('dropzone').addEventListener('drop', (e) => {
+  e.preventDefault();
+  $('dropzone').classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+$('file-input').addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  clearError();
+  state.file = file;
+  state.sample = false;
+  state.shopName = file.name.replace(/\.csv$/i, '');
+  loadMappingForFile(file);
+}
+
+$('sample-btn').addEventListener('click', async () => {
+  clearError();
+  state.file = null;
+  state.sample = true;
+  state.shopName = 'Sample Candle Co.';
+  const resp = await fetch('/api/sample-columns');
+  const data = await resp.json();
+  state.columns = data.columns;
+  state.mapping = data.mapping;
+  renderMapper();
+});
+
+$('analyze-btn').addEventListener('click', async () => {
+  clearError();
+  const mapping = currentMappingFromUI();
+  if (!mapping.date || !mapping.amount) { showError('Pick at least a date column and an amount column.'); return; }
+  state.confirmedMapping = mapping;
+
+  $('mapper-section').classList.add('hidden');
+  $('results-section').classList.add('hidden');
+  $('loading').classList.remove('hidden');
+
+  try {
+    let resp;
+    if (state.sample) {
+      const fd = new FormData();
+      fd.append('language', state.language);
+      resp = await fetch('/api/analyze-sample', { method: 'POST', body: fd });
+    } else {
+      const fd = new FormData();
+      fd.append('file', state.file);
+      fd.append('date_col', mapping.date);
+      fd.append('amount_col', mapping.amount);
+      if (mapping.quantity) fd.append('quantity_col', mapping.quantity);
+      if (mapping.product) fd.append('product_col', mapping.product);
+      fd.append('language', state.language);
+      resp = await fetch('/api/analyze', { method: 'POST', body: fd });
+    }
+    if (!resp.ok) { showError((await resp.json()).detail || 'Could not analyze this file.'); $('loading').classList.add('hidden'); return; }
+    state.result = await resp.json();
+    renderResults();
+  } catch (err) {
+    showError('Something went wrong talking to the server.');
+  }
+  $('loading').classList.add('hidden');
+});
+
+// Shades each finding's window on the chart and labels it with its +/-%,
+// directly on the plot per CLAUDE.md's layout spec ("no legend"). Chart.js
+// core has no box-annotation primitive, so this is a small inline plugin
+// rather than pulling in another CDN library for one feature.
+const windowShadingPlugin = {
+  id: 'windowShading',
+  beforeDatasetsDraw(chart) {
+    const findings = (state.result && state.result.findings) || [];
+    if (!findings.length) return;
+    const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+    const labels = chart.data.labels;
+    const halfBand = labels.length > 1 ? (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2 : 10;
+    ctx.save();
+    findings.forEach(f => {
+      const startIdx = labels.indexOf(f.window_start);
+      const endIdx = labels.indexOf(f.window_end);
+      if (startIdx === -1 || endIdx === -1) return;
+      const isSpike = f.direction === 'spike';
+      ctx.fillStyle = f.cause === 'unknown'
+        ? 'rgba(107,99,88,0.10)'
+        : (isSpike ? 'rgba(62,107,74,0.12)' : 'rgba(179,56,44,0.12)');
+      const xStart = x.getPixelForValue(startIdx) - halfBand;
+      const xEnd = x.getPixelForValue(endIdx) + halfBand;
+      ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
+    });
+    ctx.restore();
+  },
+  afterDatasetsDraw(chart) {
+    const findings = (state.result && state.result.findings) || [];
+    if (!findings.length) return;
+    const { ctx, chartArea: { top }, scales: { x } } = chart;
+    const labels = chart.data.labels;
+    ctx.save();
+    ctx.font = "600 10px 'IBM Plex Mono', monospace";
+    ctx.textAlign = 'center';
+    findings.forEach(f => {
+      const startIdx = labels.indexOf(f.window_start);
+      const endIdx = labels.indexOf(f.window_end);
+      if (startIdx === -1 || endIdx === -1) return;
+      const isSpike = f.direction === 'spike';
+      ctx.fillStyle = f.cause === 'unknown' ? '#6B6358' : (isSpike ? '#3E6B4A' : '#B3382C');
+      const xMid = (x.getPixelForValue(startIdx) + x.getPixelForValue(endIdx)) / 2;
+      ctx.fillText(`${isSpike ? '+' : '-'}${f.shortfall_pct.toFixed(0)}%`, xMid, top + 14);
+    });
+    ctx.restore();
+  },
+};
+
+let chartInstance = null;
+function renderChart() {
+  const daily = state.result.daily;
+  const labels = daily.map(d => d.date);
+  const actual = daily.map(d => d.revenue);
+  const predicted = daily.map(d => d.predicted_revenue);
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart($('chart'), {
+    type: 'line',
+    plugins: [windowShadingPlugin],
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Actual', data: actual, borderColor: '#1F1B16', backgroundColor: 'rgba(31,27,22,0.06)',
+          borderWidth: 2.5, pointRadius: 0, tension: 0.2, fill: true,
+          borderCapStyle: 'round', borderJoinStyle: 'round',
+        },
+        {
+          label: 'Expected', data: predicted, borderColor: '#B5AA95', backgroundColor: 'transparent',
+          borderWidth: 1.75, borderDash: [4,3], pointRadius: 0, tension: 0.2,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      layout: { padding: { top: 18 } },
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1F1B16', titleFont: { family: 'IBM Plex Mono' }, bodyFont: { family: 'IBM Plex Mono' },
+          padding: 10, cornerRadius: 4, displayColors: false,
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, color: '#6B6358', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false }, border: { color: '#D9D0BE' } },
+        y: { ticks: { color: '#6B6358', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#EAE3D3' }, border: { display: false } },
+      }
+    }
+  });
+}
+
+function clearWhatifOverlay() {
+  $('whatif-message').textContent = '';
+  if (!chartInstance) return;
+  if (chartInstance.data.datasets.length > 2) {
+    chartInstance.data.datasets.splice(2, 1);
+    chartInstance.update();
+  }
+}
+
+function applyWhatifOverlay(dates, values) {
+  if (!chartInstance) return;
+  const labels = chartInstance.data.labels;
+  const overlay = labels.map(l => {
+    const i = dates.indexOf(l);
+    return i >= 0 ? values[i] : null;
+  });
+  const dataset = {
+    label: 'What if (estimate)', data: overlay, borderColor: '#E0A526', backgroundColor: 'transparent',
+    borderWidth: 2, borderDash: [2,3], pointRadius: 0, spanGaps: false,
+  };
+  if (chartInstance.data.datasets.length > 2) {
+    chartInstance.data.datasets[2] = dataset;
+  } else {
+    chartInstance.data.datasets.push(dataset);
+  }
+  chartInstance.update();
+}
+
+function findingFormData(finding) {
+  const fd = new FormData();
+  fd.append('finding_json', JSON.stringify(finding));
+  const m = state.confirmedMapping || {};
+  fd.append('date_col', m.date || '');
+  fd.append('amount_col', m.amount || '');
+  if (m.quantity) fd.append('quantity_col', m.quantity);
+  if (m.product) fd.append('product_col', m.product);
+  if (state.sample) {
+    fd.append('use_sample', 'true');
+  } else {
+    fd.append('use_sample', 'false');
+    fd.append('file', state.file);
+  }
+  return fd;
+}
+
+async function fetchDrilldown(finding) {
+  const m = state.confirmedMapping || {};
+  if (!m.product) { $('drilldown-card').classList.add('hidden'); return; }
+
+  $('drilldown-card').classList.remove('hidden');
+  $('drilldown-rows').innerHTML = '<p style="color:var(--muted)">Finding the top products...</p>';
+  try {
+    const resp = await fetch('/api/drilldown', { method: 'POST', body: findingFormData(finding) });
+    if (!resp.ok) { $('drilldown-card').classList.add('hidden'); return; }
+    const data = await resp.json();
+    if (!data.products || !data.products.length) {
+      $('drilldown-rows').innerHTML = '<p style="color:var(--muted)">No clear product-level pattern in this window.</p>';
+      return;
+    }
+    $('drilldown-rows').innerHTML = data.products.map(p => {
+      const isSpike = p.direction === 'spike';
+      return `
+      <div class="drilldown-row">
+        <span class="drilldown-name">${p.product}</span>
+        <span class="drilldown-detail">expected ${p.expected_revenue.toFixed(0)} · actual ${p.actual_revenue.toFixed(0)}</span>
+        <span class="drilldown-lost ${isSpike ? 'gained' : ''}">${isSpike ? '+' : '-'}${p.impact_revenue.toFixed(0)}</span>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    $('drilldown-card').classList.add('hidden');
+  }
+}
+
+$('whatif-btn').addEventListener('click', async () => {
+  const finding = state.result.findings[state.selectedFindingIdx];
+  $('whatif-message').textContent = 'Estimating... (re-running the model, this can take a few seconds)';
+
+  try {
+    const resp = await fetch('/api/whatif', { method: 'POST', body: findingFormData(finding) });
+    if (!resp.ok) { $('whatif-message').textContent = (await resp.json()).detail || 'Could not estimate this.'; return; }
+    const data = await resp.json();
+    $('whatif-message').textContent = data.message;
+    applyWhatifOverlay(data.dates, data.whatif_revenue);
+  } catch (err) {
+    $('whatif-message').textContent = 'Something went wrong estimating this.';
+  }
+});
+
+function renderFindings() {
+  const findings = state.result.findings;
+  if (!findings.length) {
+    $('findings-rows').innerHTML = '<p style="color:var(--muted)">No notable dips found in this period.</p>';
+    return;
+  }
+  $('findings-rows').innerHTML = findings.map((f, i) => {
+    const isUnknown = f.cause === 'unknown';
+    const isSpike = f.direction === 'spike';
+    const causeLabel = {
+      price_increase: 'price rose',
+      freight_spike: 'shipping cost rose',
+      stockout: 'products were out of stock',
+      price_decrease: 'price dropped',
+      freight_decrease: 'shipping cost dropped',
+      more_products: 'more products were available',
+      unknown: 'not sure',
+    }[f.cause] || f.cause;
+    const pctClass = isUnknown ? 'unknown' : (isSpike ? 'positive' : 'drop');
+    const sign = isSpike ? '+' : '-';
+    return `<div class="finding-row ${pctClass}" data-idx="${i}">
+      <span class="finding-index">${String(i + 1).padStart(2, '0')}</span>
+      <span class="finding-date">${f.window_start} to ${f.window_end}</span>
+      <span class="finding-desc">${isUnknown ? `Nothing in the data explains this ${isSpike ? 'jump' : 'dip'}` : 'Likely cause: ' + causeLabel}</span>
+      <span class="finding-pct ${pctClass}">${sign}${f.shortfall_pct.toFixed(0)}%</span>
+    </div>`;
+  }).join('');
+
+  $('findings-rows').querySelectorAll('.finding-row').forEach(row => {
+    row.addEventListener('click', () => selectFinding(parseInt(row.dataset.idx)));
+  });
+
+  const defaultIdx = findings.findIndex(f => f.explanation);
+  selectFinding(defaultIdx >= 0 ? defaultIdx : 0);
+}
+
+const WHATIF_CAUSES = ['price_increase', 'freight_spike', 'price_decrease', 'freight_decrease'];
+
+async function selectFinding(idx) {
+  state.selectedFindingIdx = idx;
+  $('findings-rows').querySelectorAll('.finding-row').forEach(r => r.classList.toggle('selected', parseInt(r.dataset.idx) === idx));
+
+  clearWhatifOverlay();
+  const finding = state.result.findings[idx];
+  $('whatif-box').classList.toggle('hidden', !WHATIF_CAUSES.includes(finding.cause));
+  fetchDrilldown(finding);
+
+  if (finding.cause === 'unknown') {
+    const pct = finding.shortfall_pct.toFixed(0);
+    const isSpike = finding.direction === 'spike';
+    const copy = state.language === 'te'
+      ? (isSpike
+          ? `అమ్మకాలు ${pct}% పెరిగాయి, కానీ మీ డేటాలో దానికి కారణం కనిపించలేదు. ఇది మీ ఫైల్ బయట ఉన్న విషయం కావచ్చు.`
+          : `అమ్మకాలు ${pct}% పడిపోయాయి, కానీ మీ డేటాలో దానికి కారణం కనిపించలేదు. ఇది మీ ఫైల్ బయట ఉన్న విషయం కావచ్చు.`)
+      : (isSpike
+          ? `Sales jumped ${pct}%, but nothing in your data explains it. It may be something outside this file, like a promo or some press.`
+          : `Sales dipped ${pct}%, but nothing in your data explains it. It may be something outside this file, like a competitor or an ad change.`);
+    $('explain-text').textContent = copy;
+    $('explain-text').lang = state.language;
+    $('explain-meta').textContent = '';
+    return;
+  }
+
+  if (finding.explanation && finding.explanation.text) {
+    showExplanation(finding.explanation);
+    return;
+  }
+
+  $('explain-text').textContent = 'Reading the finding and writing an explanation... (this can take 15-20 seconds)';
+  const resp = await fetch('/api/explain', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ finding, language: state.language })
+  });
+  const explanation = await resp.json();
+  finding.explanation = explanation;
+  showExplanation(explanation);
+}
+
+function showExplanation(explanation) {
+  $('explain-text').textContent = explanation.text;
+  $('explain-text').lang = state.language;
+  $('explain-meta').textContent = `${explanation.backend} · ${explanation.latency_s}s`;
+}
+
+$('lang-en').addEventListener('click', () => switchLanguage('en'));
+$('lang-te').addEventListener('click', () => switchLanguage('te'));
+function switchLanguage(lang) {
+  if (state.language === lang) return;
+  state.language = lang;
+  $('lang-en').classList.toggle('active', lang === 'en');
+  $('lang-te').classList.toggle('active', lang === 'te');
+  if (state.result && state.selectedFindingIdx !== null) {
+    const finding = state.result.findings[state.selectedFindingIdx];
+    finding.explanation = null;
+    selectFinding(state.selectedFindingIdx);
+  }
+}
+
+function renderResults() {
+  renderChart();
+  renderFindings();
+  $('footer-line').textContent = `Prediction: ${state.result.backend} · Explanations: local Gemma (gemma3:4b) · Data stays on this machine`;
+  $('results-section').classList.remove('hidden');
+}
+
+$('slip-btn').addEventListener('click', async () => {
+  if (state.selectedFindingIdx === null) { showError('Pick a finding first.'); return; }
+  const finding = state.result.findings[state.selectedFindingIdx];
+  const explanationText = $('explain-text').textContent;
+  const resp = await fetch('/api/slip', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      finding, explanation_text: explanationText, shop_name: state.shopName,
+      backend_footer: `Prediction: ${state.result.backend} · Gemma: local`,
+      language: state.language
+    })
+  });
+  if (!resp.ok) { showError('Could not create the slip.'); return; }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'saleswhy_ledger_slip.png';
+  document.body.appendChild(a); a.click(); a.remove();
+});
+</script>
+</body>
+</html>

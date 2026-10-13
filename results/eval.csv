@@ -1,0 +1,7 @@
+cause,times_injected,correctly_named,accuracy,pipeline
+freight_spike,10,2,0.2,tabpfn
+price_increase,10,0,0.0,tabpfn
+stockout,10,9,0.9,tabpfn
+freight_spike,10,0,0.0,moving_average
+price_increase,10,0,0.0,moving_average
+stockout,10,9,0.9,moving_average

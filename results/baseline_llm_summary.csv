@@ -1,0 +1,4 @@
+true_cause,times_injected,correctly_named,accuracy
+freight_spike,10,4,0.4
+price_increase,10,3,0.3
+stockout,10,9,0.9
