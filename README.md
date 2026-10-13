@@ -6,6 +6,8 @@ Upload an orders CSV from Shopify, Etsy, or any small shop export. SalesWhy pred
 
 Built for the [DEV Hacktoberfest Open-Source AI Challenge](https://dev.to) — Week 2 ("Side Hustle").
 
+**Live demo: [saleswhy.onrender.com](https://saleswhy.onrender.com/)** — click "Try sample shop," no upload needed.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
