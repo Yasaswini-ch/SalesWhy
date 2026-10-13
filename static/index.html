@@ -619,6 +619,10 @@ function showExplanation(explanation) {
   $('explain-text').textContent = explanation.text;
   $('explain-text').lang = state.language;
   $('explain-meta').textContent = `${explanation.backend} · ${explanation.latency_s}s`;
+  if (explanation.backend !== 'fixed-copy') {
+    state.lastExplanationBackend = explanation.backend;
+    updateFooter();
+  }
 }
 
 $('lang-en').addEventListener('click', () => switchLanguage('en'));
@@ -635,10 +639,20 @@ function switchLanguage(lang) {
   }
 }
 
+function updateFooter() {
+  // Honest, not assumed: Gemma can run via local Ollama or a hosted fallback
+  // depending on where this app is deployed (see explain.py). Report
+  // whichever one actually ran for the explanation on screen, not a fixed claim.
+  const explainBit = state.lastExplanationBackend
+    ? `Explanations: ${state.lastExplanationBackend}`
+    : 'Explanations: Gemma (backend shown per explanation above)';
+  $('footer-line').textContent = `Prediction: ${state.result.backend} · ${explainBit}`;
+}
+
 function renderResults() {
   renderChart();
   renderFindings();
-  $('footer-line').textContent = `Prediction: ${state.result.backend} · Explanations: local Gemma (gemma3:4b) · Data stays on this machine`;
+  updateFooter();
   $('results-section').classList.remove('hidden');
 }
 
@@ -650,7 +664,7 @@ $('slip-btn').addEventListener('click', async () => {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       finding, explanation_text: explanationText, shop_name: state.shopName,
-      backend_footer: `Prediction: ${state.result.backend} · Gemma: local`,
+      backend_footer: `Prediction: ${state.result.backend} · ${finding.explanation ? finding.explanation.backend : 'Gemma'}`,
       language: state.language
     })
   });

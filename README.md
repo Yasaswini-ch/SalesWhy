@@ -10,8 +10,9 @@ Built for the [DEV Hacktoberfest Open-Source AI Challenge](https://dev.to) — W
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![TabPFN](https://img.shields.io/badge/forecasting-TabPFN-7B2FF7.svg)](https://github.com/PriorLabs/TabPFN)
-[![Gemma via Ollama](https://img.shields.io/badge/explanations-Gemma%20(local)-4285F4.svg)](https://ollama.com/library/gemma3)
+[![Gemma](https://img.shields.io/badge/explanations-Gemma-4285F4.svg)](https://ai.google.dev/gemma)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff6600.svg)](https://hacktoberfest.com)
+[![Deploy to Render](https://img.shields.io/badge/deploy-Render-46E3B7.svg)](https://render.com/deploy?repo=https://github.com/Yasaswini-ch/SalesWhy)
 
 ---
 
@@ -21,13 +22,13 @@ Built for the [DEV Hacktoberfest Open-Source AI Challenge](https://dev.to) — W
 2. SalesWhy **auto-maps your columns** (date, amount, quantity, product) and lets you confirm or fix the guess.
 3. It predicts expected daily revenue with **TabPFN**, trained on your own earlier data.
 4. It flags windows where actual revenue was well above or below expected, and **deterministically** ranks price, shipping cost, and product availability as the likely cause — no LLM guessing involved.
-5. A local **Gemma** model (via Ollama) turns the finding into three plain sentences a shop owner can actually use.
+5. A **Gemma** model turns the finding into three plain sentences a shop owner can actually use.
 6. You can ask **"what if?"** (if the price hadn't changed, what would sales have looked like?), **drill into which products** drove the swing, and **save a shareable ledger slip** as a PNG.
 
 ## Why it's built this way
 
 - **Deterministic detection, LLM only phrases.** The cause (price, freight, stock) is decided by comparing plain numbers before/after a window — never by asking a language model to guess. Gemma only writes the sentences describing a decision that's already been made.
-- **Local-first, and honest about what isn't.** TabPFN and Gemma both run locally on this machine (via the `tabpfn` package and Ollama) — no data leaves it during prediction or explanation. The footer badge in the app always states exactly what ran where, read from the live config, not hardcoded.
+- **Local by default, honest when it isn't.** TabPFN always runs locally (via the `tabpfn` package). Gemma explanations use local Ollama first — the real "no data leaves this machine" path when you run SalesWhy yourself. If Ollama isn't reachable (e.g. the hosted demo on Render, which doesn't run a local Ollama daemon), it falls back to the same Gemma model family hosted via the Gemini API. The app's footer always reports which one actually ran, read live, never hardcoded.
 - **Every claim has a number behind it.** See [`results/eval.md`](results/eval.md) for the full accuracy table, baselines, and honest discussion of where this approach wins and loses.
 
 ## Screenshot
@@ -89,6 +90,15 @@ python src/eval.py          # writes results/eval.md and results/eval.csv
 ```
 
 The Olist CSVs aren't included in this repo (`data/` is gitignored) — download them from [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) if you want to reproduce the evaluation from scratch.
+
+## Deploying to Render
+
+TabPFN and the FastAPI app run on Render directly. Local Ollama doesn't (Render's web services don't run a local daemon alongside your app, and a 4B model needs more RAM than the free tier gives you) — so explanations fall back to the hosted Gemma model via the Gemini API when Ollama isn't reachable. This is deliberate and disclosed in the app's footer, not hidden.
+
+1. Push this repo to your own GitHub account.
+2. On Render: **New > Web Service**, connect the repo. `render.yaml` in this repo sets the build/start commands and recommends the **1 CPU / 2GB RAM** plan (512MB is tight for TabPFN + pandas + FastAPI together).
+3. Add one environment variable in the Render dashboard: `GEMINI_API_KEY` (used only for the hosted-Gemma explanation fallback — get one free at [Google AI Studio](https://aistudio.google.com/apikey)).
+4. Deploy. First request after a cold start will be slower (TabPFN loading its weights); subsequent ones are fast.
 
 ## Project structure
 

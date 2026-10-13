@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -180,4 +181,8 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # 0.0.0.0 + $PORT for hosting platforms like Render, which assign the
+    # port at runtime; falls back to the usual localhost:8000 for local dev.
+    host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host=host, port=port)

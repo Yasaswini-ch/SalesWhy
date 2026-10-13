@@ -1,19 +1,35 @@
 """Turn a detect.py finding into a short, plain-language explanation.
 
-Gemma (local, via Ollama) only phrases a finding that detect.py already
-decided deterministically -- it never sees raw data and never chooses the
-cause (CLAUDE.md principle 1). The "not sure" case bypasses the LLM
-entirely and uses fixed copy, since consistency matters more than
-variation for a message this important.
+Gemma only phrases a finding that detect.py already decided deterministically
+-- it never sees raw data and never chooses the cause (CLAUDE.md principle 1).
+The "not sure" case bypasses the LLM entirely and uses fixed copy, since
+consistency matters more than variation for a message this important.
+
+Backend: local Ollama first (the real "100% local" path, used when this app
+runs on your own machine). If Ollama isn't reachable -- e.g. this is
+deployed to Render, which doesn't run a local Ollama daemon alongside the
+web service -- it falls back to the *same* Gemma model family hosted via
+the Gemini API, and only after that to a fixed template. Which one actually
+ran is always reported back in `backend`, never hidden.
 """
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.request
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OLLAMA_HOST = "http://localhost:11434"
+OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
+OLLAMA_PING_URL = f"{OLLAMA_HOST}/api/tags"
+OLLAMA_PING_TIMEOUT = 1.5  # fail fast if there's no local Ollama at all (e.g. on Render)
+OLLAMA_GENERATE_TIMEOUT = 60  # once we know Ollama is up, a cold model load can be slow
 MODEL = "gemma3:4b"
+HOSTED_GEMMA_MODEL = "gemma-4-26b-a4b-it"
 
 CAUSE_LABELS = {
     "price_increase": "the price went up",
@@ -36,7 +52,22 @@ UNKNOWN_COPY = {
 }
 
 
-def _call_ollama(prompt: str, timeout: int = 60) -> str:
+def _ollama_available() -> bool:
+    # A cold Gemma load can take 20-40s, so the real generate call needs a
+    # generous timeout -- but that same generous timeout would make a
+    # deployment with no Ollama at all (e.g. Render) hang pointlessly before
+    # falling back. Ping a cheap endpoint with a short timeout first to tell
+    # "not running" apart from "running but slow to generate."
+    try:
+        with urllib.request.urlopen(OLLAMA_PING_URL, timeout=OLLAMA_PING_TIMEOUT):
+            return True
+    except Exception:
+        return False
+
+
+def _call_ollama(prompt: str) -> str:
+    if not _ollama_available():
+        raise RuntimeError("Ollama is not reachable at " + OLLAMA_HOST)
     # num_predict caps generation length -- 3 short sentences never need more
     # than ~120 tokens, and capping it keeps a slow CPU decode from running on.
     payload = json.dumps({
@@ -46,9 +77,28 @@ def _call_ollama(prompt: str, timeout: int = 60) -> str:
         "options": {"num_predict": 120},
     }).encode()
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=OLLAMA_GENERATE_TIMEOUT) as resp:
         body = json.loads(resp.read())
     return body["response"].strip()
+
+
+def _call_hosted_gemma(prompt: str) -> str:
+    from google import genai
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("no GEMINI_API_KEY configured for the hosted-Gemma fallback")
+    client = genai.Client(api_key=api_key)
+
+    last_exc = None
+    for attempt in range(3):  # the hosted API intermittently 503/500s under load
+        try:
+            resp = client.models.generate_content(model=HOSTED_GEMMA_MODEL, contents=prompt)
+            return resp.text.strip()
+        except Exception as exc:
+            last_exc = exc
+            time.sleep(2 * (attempt + 1))
+    raise last_exc
 
 
 def _build_prompt(finding: dict, language: str) -> str:
@@ -78,13 +128,17 @@ def explain(finding: dict, language: str = "en") -> dict:
     start = time.time()
     try:
         text = _call_ollama(prompt)
-        backend = f"ollama:{MODEL}"
-    except Exception as exc:  # pragma: no cover - environment dependent
-        verb = "above" if direction == "spike" else "below"
-        text = (
-            f"Sales were {finding['shortfall_pct']:.0f}% {verb} expected because {CAUSE_LABELS.get(finding['cause'], finding['cause'])}."
-        )
-        backend = f"fallback-template ({exc!r})"
+        backend = f"ollama-local:{MODEL}"
+    except Exception as ollama_exc:
+        try:
+            text = _call_hosted_gemma(prompt)
+            backend = f"gemini-hosted:{HOSTED_GEMMA_MODEL}"
+        except Exception as hosted_exc:  # pragma: no cover - environment dependent
+            verb = "above" if direction == "spike" else "below"
+            text = (
+                f"Sales were {finding['shortfall_pct']:.0f}% {verb} expected because {CAUSE_LABELS.get(finding['cause'], finding['cause'])}."
+            )
+            backend = f"fallback-template (ollama: {ollama_exc!r}, hosted: {hosted_exc!r})"
     latency_s = round(time.time() - start, 2)
     return {"text": text, "backend": backend, "latency_s": latency_s}
 

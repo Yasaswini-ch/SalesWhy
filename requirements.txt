@@ -7,8 +7,8 @@ tabulate==0.10.0
 kaggle
 fastapi==0.142.2
 uvicorn==0.30.6
-python-multipart
+python-multipart==0.0.20
 pillow==10.4.0
 python-dotenv
-google-genai
+google-genai==2.30.0
 openai
